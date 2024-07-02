@@ -1,2 +1,5 @@
 github.com/alist-org/alist/v3 v3.0.0-beta.0 h1:tTosXvDttekbbkORzVMCzpw6xa6TaclzLEZ0mzzu8qw=
 github.com/alist-org/alist/v3 v3.0.0-beta.0/go.mod h1:1TfFPURtBFLrW6mOV28P/4gdbSiAT1f3dp2bGR4o/cM=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
+gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=

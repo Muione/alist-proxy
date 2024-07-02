@@ -1,0 +1,12 @@
+# the proxy port
+port: 5243
+# use https protocol
+https: false
+# https cert file
+certFile: server.crt
+# https key file
+keyFile: server.key
+# alist server address
+address: http://example.com
+# alist server api token
+token: alist-xxx
