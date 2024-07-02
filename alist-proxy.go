@@ -113,7 +113,7 @@ type Result struct {
 func errorResponse(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("content-type", "text/json")
 	res, _ := json.Marshal(Result{Code: code, Msg: msg})
-	w.WriteHeader(200)
+	// w.WriteHeader(200)
 	_, _ = w.Write(res)
 }
 
