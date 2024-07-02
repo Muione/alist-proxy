@@ -5,6 +5,8 @@ on:
     tags:
       - '*'
 
+if: false
+
 jobs:
   release_docker:
     name: Release Docker
