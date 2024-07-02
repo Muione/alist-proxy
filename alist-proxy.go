@@ -26,12 +26,6 @@ type LinkResp struct {
 	Data    Link   `json:"data"`
 }
 
-var (
-	help       bool
-	configFile string
-	s          sign.Sign
-)
-
 var config struct {
 	Port     int    `yaml:"port"`
 	Https    bool   `yaml:"https"`
@@ -41,6 +35,12 @@ var config struct {
 	Address  string `yaml:"address"`
 	Token    string `yaml:"token"`
 }
+
+var (
+	help       bool
+	configFile string
+	s          sign.Sign
+)
 
 func loadConfig(filename string) error {
 	data, err := os.ReadFile(filename)
@@ -56,6 +56,29 @@ func loadConfig(filename string) error {
 	return nil
 }
 
+// createDefaultConfig creates a default config file with example values.
+func createDefaultConfig(filename string) error {
+	defaultConfig := `# Proxy port
+port: 5243
+
+# Use HTTPS (true/false)
+https: false
+
+# HTTPS certificate file (if https is true)
+certFile: server.crt
+
+# HTTPS key file (if https is true)
+keyFile: server.key
+
+# Alist server address (e.g. http://your-alist-server)
+address: http://example.com
+
+# Alist server API token
+token: alist-xxx
+`
+	return os.WriteFile(filename, []byte(defaultConfig), 0644)
+}
+
 func init() {
 	flag.BoolVar(&help, "h", false, "help")
 	flag.BoolVar(&help, "help", false, "help")
@@ -63,32 +86,17 @@ func init() {
 	flag.Parse()
 	err := loadConfig(configFile)
 	if err != nil {
-		// 如果配置文件不存在，则在当前目录下创建一个默认配置文件
-		if os.IsNotExist(err) {
-			fmt.Println("config.yaml not found, create a default config file")
-			defaultConfig := `# the proxy port
-port: 5243
-# use https protocol
-https: false
-# https cert file
-certFile: server.crt
-# https key file
-keyFile: server.key
-# alist server address
-address: http://example.com
-# alist server api token
-token: alist-xxx
-`
-			err := os.WriteFile("config.yaml", []byte(defaultConfig), 0644)
-			if err != nil {
-				fmt.Printf("Create config file error: %s\n", err.Error())
-				os.Exit(1)
-			}
-			fmt.Println("Create config file success, please edit it and restart the proxy!")
-			os.Exit(0)
+		if !os.IsNotExist(err) {
+			fmt.Printf("load config error: %s\n", err.Error())
+			os.Exit(1)
 		}
-		fmt.Printf("load config error: %s\n", err.Error())
-		os.Exit(1)
+		err := createDefaultConfig(configFile)
+		if err != nil {
+			fmt.Printf("Create config file error: %s\n", err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("Create config file success, please edit it and restart the proxy!")
+		os.Exit(0)
 	}
 	s = sign.NewHMACSign([]byte(config.Token))
 }
