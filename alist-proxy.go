@@ -126,7 +126,7 @@ func downHandle(w http.ResponseWriter, r *http.Request) {
 		// [error] host:port - [date] - error - method - proto - path
 		fmt.Printf("[error] %s - [%s] - %s - %s - %s - %s\n",
 			r.RemoteAddr,
-			time.Now().Format("02/Jan/2006:15:04:05 +0800"),
+			time.Now().Format("2006-01-02 15:04:05"),
 			err.Error(),
 			r.Method,
 			r.Proto,
@@ -172,7 +172,7 @@ func downHandle(w http.ResponseWriter, r *http.Request) {
 	// [error] host:port - [date] - error - method - proto - path
 	fmt.Printf("[info] %s - [%s] - - %s - %s - %s\n",
 		r.RemoteAddr,
-		time.Now().Format("02/Jan/2006:15:04:05 +0800"),
+		time.Now().Format("2006-01-02 15:04:05"),
 		r.Method,
 		r.Proto,
 		r.URL.Path,
