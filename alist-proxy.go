@@ -26,10 +26,16 @@ type LinkResp struct {
 	Data    Link   `json:"data"`
 }
 
+type Json map[string]interface{}
+
+type Result struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+}
+
 var config struct {
 	Port     int    `yaml:"port"`
 	Https    bool   `yaml:"https"`
-	Help     bool   `yaml:"help"`
 	CertFile string `yaml:"certFile"`
 	KeyFile  string `yaml:"keyFile"`
 	Address  string `yaml:"address"`
@@ -39,7 +45,8 @@ var config struct {
 var (
 	help       bool
 	configFile string
-	s          sign.Sign
+	signer     sign.Sign
+	HttpClient = &http.Client{}
 )
 
 func loadConfig(filename string) error {
@@ -79,6 +86,121 @@ token: alist-xxx
 	return os.WriteFile(filename, []byte(defaultConfig), 0644)
 }
 
+func errorResponse(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("content-type", "text/json")
+	res, _ := json.Marshal(Result{Code: code, Msg: msg})
+	_, _ = w.Write(res)
+}
+
+func downHandle(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Path
+	signature := r.URL.Query().Get("sign")
+
+	err := signer.Verify(filePath, signature)
+	if err != nil {
+		errorResponse(w, http.StatusUnauthorized, err.Error())
+		logInfo("error", r, err.Error())
+		return
+	}
+
+	link, err := getDownloadLink(filePath)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		logInfo("error", r, err.Error())
+		return
+	}
+	logInfo("info", r, "")
+
+	err = proxyDownload(w, r, link)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		logInfo("failed", r, err.Error())
+		return
+	}
+}
+
+// getDownloadLink retrieves the download link from the Alist server
+func getDownloadLink(filePath string) (*Link, error) {
+	data := Json{"path": filePath}
+	dataByte, _ := json.Marshal(data)
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/fs/link", config.Address), bytes.NewBuffer(dataByte))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", config.Token)
+
+	res, err := HttpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	dataByte, err = io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp LinkResp
+	err = json.Unmarshal(dataByte, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code != http.StatusOK {
+		return nil, fmt.Errorf("alist server returned error: %s", resp.Message)
+	}
+
+	if !strings.HasPrefix(resp.Data.Url, "http") {
+		resp.Data.Url = "http:" + resp.Data.Url
+	}
+
+	return &resp.Data, nil
+}
+
+// proxyDownload proxies the file download from the Alist server to the client
+func proxyDownload(w http.ResponseWriter, r *http.Request, link *Link) error {
+	req, _ := http.NewRequest(r.Method, link.Url, nil)
+	for h, val := range r.Header {
+		req.Header[h] = val
+	}
+	for h, val := range link.Header {
+		req.Header[h] = val
+	}
+
+	res, err := HttpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	res.Header.Del("Access-Control-Allow-Origin")
+	res.Header.Del("set-cookie")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Add("Access-Control-Allow-Headers", "range")
+
+	for h, v := range res.Header {
+		w.Header()[h] = v
+	}
+
+	w.WriteHeader(res.StatusCode)
+
+	_, err = io.Copy(w, res.Body)
+	return err
+}
+
+// logInfo logs an info message with request details
+func logInfo(logType string, r *http.Request, errMessage string) {
+	fmt.Printf("[%s] %s - [%s] - %s - %s - %s - %s\n",
+		logType,
+		r.RemoteAddr,
+		time.Now().Format("2006-01-02 15:04:05"),
+		errMessage,
+		r.Method,
+		r.Proto,
+		r.URL.Path,
+	)
+}
+
 func init() {
 	flag.BoolVar(&help, "h", false, "help")
 	flag.BoolVar(&help, "help", false, "help")
@@ -98,114 +220,7 @@ func init() {
 		fmt.Println("Create config file success, please edit it and restart the proxy!")
 		os.Exit(0)
 	}
-	s = sign.NewHMACSign([]byte(config.Token))
-}
-
-var HttpClient = &http.Client{}
-
-type Json map[string]interface{}
-
-type Result struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-}
-
-func errorResponse(w http.ResponseWriter, code int, msg string) {
-	w.Header().Set("content-type", "text/json")
-	res, _ := json.Marshal(Result{Code: code, Msg: msg})
-	// w.WriteHeader(200)
-	_, _ = w.Write(res)
-}
-
-func downHandle(w http.ResponseWriter, r *http.Request) {
-	sign := r.URL.Query().Get("sign")
-	filePath := r.URL.Path
-	err := s.Verify(filePath, sign)
-	if err != nil {
-		// 签名验证失败，写入日志，格式为：
-		// [error] host:port - [date] - error - method - proto - path
-		fmt.Printf("[error] %s - [%s] - %s - %s - %s - %s\n",
-			r.RemoteAddr,
-			time.Now().Format("2006-01-02 15:04:05"),
-			err.Error(),
-			r.Method,
-			r.Proto,
-			r.URL.Path,
-		)
-		errorResponse(w, 401, err.Error())
-		return
-	}
-	data := Json{
-		"path": filePath,
-	}
-	dataByte, _ := json.Marshal(data)
-	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/fs/link", config.Address), bytes.NewBuffer(dataByte))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", config.Token)
-	res, err := HttpClient.Do(req)
-	if err != nil {
-		errorResponse(w, 500, err.Error())
-		return
-	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
-	dataByte, err = io.ReadAll(res.Body)
-	if err != nil {
-		errorResponse(w, 500, err.Error())
-		return
-	}
-	var resp LinkResp
-	err = json.Unmarshal(dataByte, &resp)
-	if err != nil {
-		errorResponse(w, 500, err.Error())
-		return
-	}
-	if resp.Code != 200 {
-		errorResponse(w, resp.Code, resp.Message)
-		return
-	}
-	if !strings.HasPrefix(resp.Data.Url, "http") {
-		resp.Data.Url = "http:" + resp.Data.Url
-	}
-	// 请求链接成功，写入日志：
-	// [error] host:port - [date] - error - method - proto - path
-	fmt.Printf("[info] %s - [%s] - - %s - %s - %s\n",
-		r.RemoteAddr,
-		time.Now().Format("2006-01-02 15:04:05"),
-		r.Method,
-		r.Proto,
-		r.URL.Path,
-	)
-	req2, _ := http.NewRequest(r.Method, resp.Data.Url, nil)
-	for h, val := range r.Header {
-		req2.Header[h] = val
-	}
-	for h, val := range resp.Data.Header {
-		req2.Header[h] = val
-	}
-	res2, err := HttpClient.Do(req2)
-	if err != nil {
-		errorResponse(w, 500, err.Error())
-		return
-	}
-	defer func() {
-		_ = res2.Body.Close()
-	}()
-	res2.Header.Del("Access-Control-Allow-Origin")
-	res2.Header.Del("set-cookie")
-	for h, v := range res2.Header {
-		w.Header()[h] = v
-	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Add("Access-Control-Allow-Headers", "range")
-	w.WriteHeader(res2.StatusCode)
-	_, err = io.Copy(w, res2.Body)
-	if err != nil {
-		errorResponse(w, 500, err.Error())
-		return
-	}
+	signer = sign.NewHMACSign([]byte(config.Token))
 }
 
 func main() {
@@ -219,13 +234,14 @@ func main() {
 		Addr:    addr,
 		Handler: http.HandlerFunc(downHandle),
 	}
+
+	var err error
 	if !config.Https {
-		if err := s.ListenAndServe(); err != nil {
-			fmt.Printf("failed to start: %s\n", err.Error())
-		}
+		err = s.ListenAndServe()
 	} else {
-		if err := s.ListenAndServeTLS(config.CertFile, config.KeyFile); err != nil {
-			fmt.Printf("failed to start: %s\n", err.Error())
-		}
+		err = s.ListenAndServeTLS(config.CertFile, config.KeyFile)
+	}
+	if err != nil {
+		fmt.Printf("failed to start: %s\n", err.Error())
 	}
 }
