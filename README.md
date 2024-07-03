@@ -4,8 +4,29 @@
 
 ## 安装
 - 下载适用于你系统的最新版本 [release](https://github.com/Muione/alist-proxy/releases/latest/)
+
 - 解压
+
 - 运行 `alist-proxy` 会在当前目录下生成默认配置文件 `config.yaml`
+
+- 如果没有找到对应的版本，也可以自己构建：
+    - 安装 [Go](https://golang.org/doc/install) 版本需要 `1.19+`
+    - clone 项目:
+    ```bash
+    git clone https://github.com/Muione/alist-proxy.git
+    ```
+    - 进入项目目录:
+    ```bash
+    cd alist-proxy
+    ```
+    - 安装依赖:
+    ```bash
+    go mod download
+    ```
+    - 构建:
+    ```bash
+    go build alist-proxy.go
+    ```
 
 ## 配置
 ### `config.yaml` 文件内容如下：
