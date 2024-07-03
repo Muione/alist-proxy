@@ -77,8 +77,8 @@ certFile: server.crt
 # HTTPS key file (if https is true)
 keyFile: server.key
 
-# Alist server address (e.g. http://your-alist-server)
-address: http://example.com
+# Alist server address
+address: http://your-alist-server
 
 # Alist server API token
 token: alist-xxx
