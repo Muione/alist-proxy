@@ -106,7 +106,7 @@ func downHandle(w http.ResponseWriter, r *http.Request) {
 	link, err := getDownloadLink(filePath)
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, err.Error())
-		logInfo("error", r, err.Error())
+		logInfo("fail", r, err.Error())
 		return
 	}
 	logInfo("info", r, "")
@@ -114,7 +114,7 @@ func downHandle(w http.ResponseWriter, r *http.Request) {
 	err = proxyDownload(w, r, link)
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, err.Error())
-		logInfo("failed", r, err.Error())
+		// logInfo("failed", r, err.Error())
 		return
 	}
 }
@@ -190,7 +190,7 @@ func proxyDownload(w http.ResponseWriter, r *http.Request, link *Link) error {
 
 // logInfo logs an info message with request details
 func logInfo(logType string, r *http.Request, errMessage string) {
-	fmt.Printf("[%s] %s - [%s] - %s - %s - %s - %s\n",
+	fmt.Printf("[%s] %s - [%s] - [%s] - %s - %s - %s\n",
 		logType,
 		r.RemoteAddr,
 		time.Now().Format("2006-01-02 15:04:05"),
