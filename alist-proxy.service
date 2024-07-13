@@ -7,7 +7,7 @@ After=network.target network.service
 Type=simple
 WorkingDirectory=/opt/alist-proxy
 ExecStart=/opt/alist-proxy/alist-proxy
-StandardOutput=append:/opt/alist-proxy/log.log # 将输出重定向到文件中，可以记录访问日志，防止恶意访问
+StandardOutput=append:/opt/alist-proxy/log.log
 StandardError=append:/opt/alist-proxy/err.log
 Restart=on-failure
 

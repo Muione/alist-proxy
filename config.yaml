@@ -1,12 +1,20 @@
-# the proxy port
+# Proxy port
 port: 5243
-# use https protocol
+
+# Use HTTPS (true/false)
 https: false
-# https cert file
+
+# HTTPS certificate file (if https is true)
 certFile: server.crt
-# https key file
+
+# HTTPS key file (if https is true)
 keyFile: server.key
-# alist server address
-address: http://example.com
-# alist server api token
+
+# Alist server address
+address: http://your-alist-server
+
+# Alist server API token
 token: alist-xxx
+
+# User-Agent header to use
+userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36

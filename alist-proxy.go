@@ -34,12 +34,13 @@ type Result struct {
 }
 
 var config struct {
-	Port     int    `yaml:"port"`
-	Https    bool   `yaml:"https"`
-	CertFile string `yaml:"certFile"`
-	KeyFile  string `yaml:"keyFile"`
-	Address  string `yaml:"address"`
-	Token    string `yaml:"token"`
+	Port      int    `yaml:"port"`
+	Https     bool   `yaml:"https"`
+	CertFile  string `yaml:"certFile"`
+	KeyFile   string `yaml:"keyFile"`
+	Address   string `yaml:"address"`
+	Token     string `yaml:"token"`
+	UserAgent string `yaml:"userAgent"`
 }
 
 var (
@@ -82,6 +83,9 @@ address: http://your-alist-server
 
 # Alist server API token
 token: alist-xxx
+
+# User-Agent header to use
+userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36
 `
 	return os.WriteFile(filename, []byte(defaultConfig), 0644)
 }
@@ -127,6 +131,7 @@ func getDownloadLink(filePath string) (*Link, error) {
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/fs/link", config.Address), bytes.NewBuffer(dataByte))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", config.Token)
+	req.Header.Set("User-Agent", "Alist-Proxy")
 
 	res, err := HttpClient.Do(req)
 	if err != nil {
@@ -159,6 +164,8 @@ func getDownloadLink(filePath string) (*Link, error) {
 // proxyDownload proxies the file download from the Alist server to the client
 func proxyDownload(w http.ResponseWriter, r *http.Request, link *Link) error {
 	req, _ := http.NewRequest(r.Method, link.Url, nil)
+	req.Header.Set("User-Agent", config.UserAgent)
+
 	for h, val := range r.Header {
 		req.Header[h] = val
 	}
