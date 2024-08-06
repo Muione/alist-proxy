@@ -1,3 +1,5 @@
+#!/bin/bash
+
 REPO="Muione/alist-proxy"
 
 INSTALL_PATH="/opt/alist-proxy"
