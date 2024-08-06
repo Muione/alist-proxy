@@ -4,7 +4,7 @@ INSTALL_PATH="/opt/alist-proxy"
 ACTION="install"
 
 # 处理命令行参数
-while getopts "d:iu" opt; do
+while getopts "d:iur" opt; do
   case $opt in
     d)
       INSTALL_PATH="$OPTARG"
@@ -63,15 +63,14 @@ function download_alist_proxy() {
     curl -LO https://github.com/${REPO}/releases/download/v${TAG}/alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
     tar -zxvf alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
     rm alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
+    chmod +x alist-proxy
 }
 
-
-
-chmod +x alist-proxy
 if [ "$ACTION" == "install" ]; then
     mkdir -p ${INSTALL_PATH}
     cd ${INSTALL_PATH}
     download_alist_proxy
+    
     # 下载service模板：
     curl -LO https://raw.githubusercontent.com/${REPO}/main/alist-proxy.service
     # 替换service模板中的路径：
