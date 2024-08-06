@@ -13,21 +13,6 @@ builds:
     # Default: `.`.
     main: .
 
-
-    # Custom asmflags.
-    #
-    # Templates: allowed.
-    # asmflags:
-    #   - -D mysymbol
-    #   - all=-trimpath={{.Env.GOPATH}}
-
-    # Custom gcflags.
-    #
-    # Templates: allowed.
-    # gcflags:
-    #   - all=-trimpath={{.Env.GOPATH}}
-    #   - ./dontoptimizeme=-N
-
     # Custom ldflags.
     #
     # Default: '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser'.
@@ -50,23 +35,6 @@ builds:
       - netgo
       - static_build
       - feature
-
-    # Custom environment variables to be set during the builds.
-    # Invalid environment variables will be ignored.
-    #
-    # Default: os.Environ() ++ env config section.
-    # Templates: allowed.
-    env:
-      # - CGO_ENABLED=0
-      # # complex, templated envs (v1.14+):
-      # - >-
-      #   {{- if eq .Os "darwin" }}
-      #     {{- if eq .Arch "amd64"}}CC=o64-clang{{- end }}
-      #     {{- if eq .Arch "arm64"}}CC=aarch64-apple-darwin20.2-clang{{- end }}
-      #   {{- end }}
-      #   {{- if eq .Os "windows" }}
-      #     {{- if eq .Arch "amd64" }}CC=x86_64-w64-mingw32-gcc{{- end }}
-      #   {{- end }}
 
     # GOOS list to build for.
     # For more info refer to: https://go.dev/doc/install/source#environment
@@ -92,6 +60,7 @@ builds:
     goarm:
       - 6
       - 7
+      - 8
 
     # GOAMD64 to build when GOARCH is amd64.
     # For more info refer to: https://go.dev/doc/install/source#environment
