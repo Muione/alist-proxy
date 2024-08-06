@@ -1,21 +1,29 @@
 REPO="Muione/alist-proxy"
 
 INSTALL_PATH="/opt/alist-proxy"
+ACTION="install"
 
-# 检查是否传入了 -d 参数
-if [ "$1" == "-d" ]; then
-    # 检查 $2 是否为空
-    if [ -z "$2" ]; then
-        echo "请指定安装路径"
-        exit 1
-    fi
-    # 如果$2是相对路径，还需要改成绝对路径
-    if [ "${2:0:1}" != "/" ]; then
-        INSTALL_PATH=$(pwd)/$2
-    else
-        INSTALL_PATH=$2
-    fi
-fi
+# 处理命令行参数
+while getopts "d:iu" opt; do
+  case $opt in
+    d)
+      INSTALL_PATH="$OPTARG"
+      ;;
+    i)
+      ACTION="install"
+      ;;
+    u)
+      ACTION="update"
+      ;;
+    r)
+      ACTION="uninstall"
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
 
 OS_TYPE="linux"
 ARCH="amd64"
@@ -51,39 +59,54 @@ fi
 TAG=$(curl -s https://api.github.com/repos/${REPO}/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
 TAG=${TAG#v} # 去掉v前缀
 
-# 创建 alist-proxy 文件夹
-mkdir -p ${INSTALL_PATH}
+function download_alist_proxy() {
+    curl -LO https://github.com/${REPO}/releases/download/v${TAG}/alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
+    tar -zxvf alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
+    rm alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
+}
 
-# 进入 alist-proxy 文件夹
-cd ${INSTALL_PATH}
 
-# 下载并安装：
-# 文件名：alist-proxy_1.0.2_darwin_amd64.tar.gz
-curl -LO https://github.com/${REPO}/releases/download/v${TAG}/alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
-tar -zxvf alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
-rm alist-proxy_${TAG}_${OS_TYPE}_${ARCH}.tar.gz
 
 chmod +x alist-proxy
+if [ "$ACTION" == "install" ]; then
+    mkdir -p ${INSTALL_PATH}
+    cd ${INSTALL_PATH}
+    download_alist_proxy
+    # 下载service模板：
+    curl -LO https://raw.githubusercontent.com/${REPO}/main/alist-proxy.service
+    # 替换service模板中的路径：
+    sed -i "s|/opt/alist-proxy|${INSTALL_PATH}|g" alist-proxy.service
+    # 安装service：
+    sudo cp alist-proxy.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable alist-proxy
+    # 预运行生成默认配置文件
+    ${INSTALL_PATH}/alist-proxy
+    # 输出安装完成信息：
+    echo "alist-proxy has been installed successfully."
+    echo "Please edit ${INSTALL_PATH}/config.yaml and then run :"
+    echo "sudo systemctl start alist-proxy"
+elif [ "$ACTION" == "uninstall" ]; then
+    # 卸载service：
+    sudo systemctl disable alist-proxy
+    sudo systemctl stop alist-proxy
+    sudo rm /etc/systemd/system/alist-proxy.service
+    sudo systemctl daemon-reload
+    
+    echo "alist-proxy has been uninstalled successfully."
+    echo "please remove the alist-proxy directory manually"
 
-# 下载service模板：
-curl -LO https://raw.githubusercontent.com/${REPO}/main/alist-proxy.service
-
-# 替换service模板中的路径：
-sed -i "s|/opt/alist-proxy|${INSTALL_PATH}|g" alist-proxy.service
-
-# 安装service：
-sudo cp alist-proxy.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable alist-proxy
-# sudo systemctl start alist-proxy
-
-# 预运行生成默认配置文件
-${INSTALL_PATH}/alist-proxy
-
-
-# 输出安装完成信息：
-echo "alist-proxy has been installed successfully."
-echo "Please edit ${INSTALL_PATH}/config.yaml and then run :"
-echo "sudo systemctl start alist-proxy"
+elif [ "$ACTION" == "update" ]; then
+    sudo systemctl stop alist-proxy
+    # 下载最新版本：
+    cd ${INSTALL_PATH}
+    mv alist-proxy alist-proxy.bak
+    download_alist_proxy
+    rm alist-proxy.bak
+    sudo systemctl restart alist-proxy
+    echo "alist-proxy has been updated successfully."
+else
+    echo "Invalid action.."
+fi
 
 
