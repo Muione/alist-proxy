@@ -10,6 +10,8 @@ ExecStart=/opt/alist-proxy/alist-proxy
 StandardOutput=append:/opt/alist-proxy/log.log
 StandardError=append:/opt/alist-proxy/err.log
 Restart=on-failure
+StartLimitBurst=5
+StartLimitIntervalSec=10
 
 [Install]
 WantedBy=multi-user.target
