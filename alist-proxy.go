@@ -129,7 +129,7 @@ func getDownloadLink(filePath string) (*Link, error) {
 	dataByte, _ := json.Marshal(data)
 
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/fs/link", config.Address), bytes.NewBuffer(dataByte))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json;charset=UTF-8")
 	req.Header.Set("Authorization", config.Token)
 	req.Header.Set("User-Agent", "Alist-Proxy")
 
@@ -166,17 +166,49 @@ func proxyDownload(w http.ResponseWriter, r *http.Request, link *Link) error {
 	req, _ := http.NewRequest(r.Method, link.Url, nil)
 	req.Header.Set("User-Agent", config.UserAgent)
 
-	for h, val := range r.Header {
-		req.Header[h] = val
-	}
-	for h, val := range link.Header {
-		req.Header[h] = val
+	if r.Header != nil {
+		for k, v := range r.Header {
+			req.Header[k] = v
+		}
 	}
 
-	res, err := HttpClient.Do(req)
-	if err != nil {
-		return err
+	if link.Header != nil {
+		for k, v := range link.Header {
+			req.Header[k] = v
+		}
 	}
+
+	var res *http.Response
+	var err error
+
+	for {
+		res, err = HttpClient.Do(req)
+		if err != nil {
+			return err
+		}
+		if res.StatusCode < 300 || res.StatusCode >= 400 {
+			break
+		}
+		location := res.Header.Get("Location")
+		if location == "" {
+			break
+		}
+		if strings.HasPrefix(location, config.Address+"/") {
+			req, err = http.NewRequest(req.Method, location, req.Body)
+			if err != nil {
+				return err
+			}
+			downHandle(w, req)
+			return nil
+
+		} else {
+			req, err = http.NewRequest(req.Method, location, req.Body)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	defer res.Body.Close()
 
 	res.Header.Del("Access-Control-Allow-Origin")
